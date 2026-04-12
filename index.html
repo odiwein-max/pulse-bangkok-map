@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Pulse Bangkok Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -10,8 +11,14 @@
   />
 
   <style>
-    body { margin: 0; }
-    #map { height: 100vh; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      height: 100vh;
+    }
   </style>
 </head>
 <body>
@@ -21,20 +28,23 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-  var map = L.map('map').setView([13.7563, 100.5018], 12); // Bangkok
+  // Initialize map centered on Bangkok
+  var map = L.map('map').setView([13.7563, 100.5018], 12);
 
+  // Load OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  // test hotspot (Ari)
-  L.circle([13.7799, 100.5450], {
+  // Test hotspot (Ari)
+  var ariHotspot = L.circle([13.7799, 100.5450], {
     color: 'red',
     fillColor: '#f03',
     fillOpacity: 0.5,
     radius: 500
-  }).addTo(map)
-    .bindPopup("Ari — test hotspot 🔥");
+  }).addTo(map);
+
+  ariHotspot.bindPopup("Ari — test hotspot 🔥");
 </script>
 
 </body>
