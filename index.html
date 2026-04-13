@@ -138,57 +138,65 @@
     let activeLayers = [];
 
     function getCircleStyle(total) {
-      if (total >= 6) {
-        return {
-          radius: 900,
-          color: "#d7263d",
-          fillColor: "#ff4d6d",
-          fillOpacity: 0.45,
-          weight: 2
-        };
-      }
+  if (total >= 6) {
+    return {
+      radius: 1200,
+      color: "#d7263d",
+      fillColor: "#ff4d6d",
+      fillOpacity: 0.5,
+      weight: 2
+    };
+  }
 
-      if (total >= 3) {
-        return {
-          radius: 650,
-          color: "#f77f00",
-          fillColor: "#ffb703",
-          fillOpacity: 0.38,
-          weight: 2
-        };
-      }
+  if (total >= 3) {
+    return {
+      radius: 800,
+      color: "#f77f00",
+      fillColor: "#ffb703",
+      fillOpacity: 0.4,
+      weight: 2
+    };
+  }
 
-      if (total >= 1) {
-        return {
-          radius: 420,
-          color: "#2a9d8f",
-          fillColor: "#52b788",
-          fillOpacity: 0.30,
-          weight: 2
-        };
-      }
+  if (total >= 1) {
+    return {
+      radius: 500,
+      color: "#2a9d8f",
+      fillColor: "#52b788",
+      fillOpacity: 0.3,
+      weight: 2
+    };
+  }
 
-      return {
-        radius: 260,
-        color: "#8d99ae",
-        fillColor: "#cfd8dc",
-        fillOpacity: 0.18,
-        weight: 1
-      };
-    }
+  return {
+    radius: 300,
+    color: "#8d99ae",
+    fillColor: "#cfd8dc",
+    fillOpacity: 0.2,
+    weight: 1
+  };
+}
 
     function formatVibes(vibes) {
-      const entries = Object.entries(vibes || {});
-      if (entries.length === 0) {
-        return '<div class="popup-line">No active vibes yet</div>';
-      }
+  const map = {
+    Work: "working 💻",
+    Social: "social 🧑‍🤝‍🧑",
+    Chill: "chilling ☕",
+    Explore: "exploring 🗺️",
+    Drinks: "out for drinks 🍻"
+  };
 
-      entries.sort((a, b) => b[1] - a[1]);
+  const entries = Object.entries(vibes || {});
+  if (entries.length === 0) {
+    return '<div class="popup-line">No activity yet</div>';
+  }
 
-      return entries
-        .map(([vibe, count]) => `<div class="popup-line">• ${count} ${vibe}</div>`)
-        .join("");
-    }
+  entries.sort((a, b) => b[1] - a[1]);
+
+  return entries
+    .map(([vibe, count]) => `<div class="popup-line">• ${count} people ${map[vibe]}</div>`)
+    .join("");
+}
 
     function buildPopup(area) {
       return `
