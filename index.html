@@ -190,7 +190,6 @@
     };
   }
 
-  // מיון לפי כמות
   entries.sort((a, b) => b[1] - a[1]);
 
   const emojiMap = {
@@ -218,11 +217,10 @@
   let text = `mostly ${primaryName}`;
   let emojis = primaryEmoji;
 
-  // בדיקה אם יש "shift"
+  // shifting logic
   if (second) {
     const [secondVibe, secondCount] = second;
 
-    // אם השני קרוב מספיק (70% ומעלה)
     if (secondCount / topCount >= 0.7) {
       const secondName = textMap[secondVibe] || secondVibe;
       const secondEmoji = emojiMap[secondVibe] || "";
@@ -230,6 +228,25 @@
       text = `mostly ${primaryName} • shifting to ${secondName}`;
       emojis = `${primaryEmoji} ${secondEmoji}`;
     }
+  }
+
+  // 🕒 TIME CONTEXT (חדש)
+  const hour = new Date().getHours();
+
+  if (hour >= 21 && topVibe === "Drinks") {
+    text = `late night • ${text}`;
+  }
+
+  else if (hour >= 17 && topVibe === "Social") {
+    text = `evening vibe • ${text}`;
+  }
+
+  else if (hour >= 9 && hour <= 14 && topVibe === "Work") {
+    text = `daytime • ${text}`;
+  }
+
+  else if (hour >= 10 && hour <= 16 && topVibe === "Chill") {
+    text = `slow day • ${text}`;
   }
 
   return {
