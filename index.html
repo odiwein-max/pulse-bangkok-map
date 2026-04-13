@@ -119,84 +119,84 @@
 
     const map = L.map("map").setView([13.7563, 100.5018], 12);
 
-   const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
+    const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
 
-  L.tileLayer(
-  `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
-  {
-    attribution: '&copy; MapTiler & OpenStreetMap contributors',
-    tileSize: 256,
-    maxZoom: 20,
-    opacity: 0.92
-  }
-  ).addTo(map);
+    L.tileLayer(
+      `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+      {
+        attribution: '&copy; MapTiler & OpenStreetMap contributors',
+        tileSize: 256,
+        maxZoom: 20,
+        opacity: 0.92
+      }
+    ).addTo(map);
 
-  // שיפור בהירות עדין
-  document.querySelector(".leaflet-tile-pane").style.filter =
-  "brightness(0.95) contrast(1.02)";
+    document.querySelector(".leaflet-tile-pane").style.filter =
+      "brightness(0.95) contrast(1.02)";
 
     let activeLayers = [];
+    let pulseIntervals = [];
 
     function getCircleStyle(total) {
-  if (total >= 6) {
-    return {
-      radius: 1200,
-      color: "#d7263d",
-      fillColor: "#ff4d6d",
-      fillOpacity: 0.5,
-      weight: 2
-    };
-  }
+      if (total >= 6) {
+        return {
+          radius: 1200,
+          color: "#d7263d",
+          fillColor: "#ff4d6d",
+          fillOpacity: 0.5,
+          weight: 2
+        };
+      }
 
-  if (total >= 3) {
-    return {
-      radius: 800,
-      color: "#f77f00",
-      fillColor: "#ffb703",
-      fillOpacity: 0.4,
-      weight: 2
-    };
-  }
+      if (total >= 3) {
+        return {
+          radius: 800,
+          color: "#f77f00",
+          fillColor: "#ffb703",
+          fillOpacity: 0.4,
+          weight: 2
+        };
+      }
 
-  if (total >= 1) {
-    return {
-      radius: 500,
-      color: "#2a9d8f",
-      fillColor: "#52b788",
-      fillOpacity: 0.3,
-      weight: 2
-    };
-  }
+      if (total >= 1) {
+        return {
+          radius: 500,
+          color: "#2a9d8f",
+          fillColor: "#52b788",
+          fillOpacity: 0.3,
+          weight: 2
+        };
+      }
 
-  return {
-    radius: 300,
-    color: "#8d99ae",
-    fillColor: "#cfd8dc",
-    fillOpacity: 0.2,
-    weight: 1
-  };
-}
+      return {
+        radius: 300,
+        color: "#8d99ae",
+        fillColor: "#cfd8dc",
+        fillOpacity: 0.2,
+        weight: 1
+      };
+    }
 
     function formatVibes(vibes) {
-  const map = {
-    Work: "working 💻",
-    Social: "social 🧑‍🤝‍🧑",
-    Chill: "chilling ☕",
-    Explore: "exploring 🗺️",
-    Drinks: "out for drinks 🍻"
-  };
+      const vibeMap = {
+        Work: "working 💻",
+        Social: "social 🧑‍🤝‍🧑",
+        Chill: "chilling ☕",
+        Explore: "exploring 🗺️",
+        Drinks: "out for drinks 🍻"
+      };
 
-  const entries = Object.entries(vibes || {});
-  if (entries.length === 0) {
-    return '<div class="popup-line">No activity yet</div>';
-  }
+      const entries = Object.entries(vibes || {});
+      if (entries.length === 0) {
+        return '<div class="popup-line">No activity yet</div>';
+      }
 
-  entries.sort((a, b) => b[1] - a[1]);
+      entries.sort((a, b) => b[1] - a[1]);
 
-  return entries
-    .map(([vibe, count]) => `<div class="popup-line">• ${count} people ${map[vibe]}</div>`)
-    .join("");
-}
+      return entries
+        .map(([vibe, count]) => `<div class="popup-line">• ${count} people ${vibeMap[vibe] || vibe}</div>`)
+        .join("");
+    }
 
     function buildPopup(area) {
       return `
@@ -207,9 +207,41 @@
       `;
     }
 
+    function addPulse(lat, lng, baseRadius, color) {
+      let radius = baseRadius;
+
+      const pulse = L.circle([lat, lng], {
+        radius: radius,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.10,
+        weight: 1
+      }).addTo(map);
+
+      activeLayers.push(pulse);
+
+      const intervalId = setInterval(() => {
+        radius += 120;
+        pulse.setRadius(radius);
+
+        const fade = Math.max(0.02, 0.12 - ((radius - baseRadius) / (baseRadius * 2)) * 0.12);
+        pulse.setStyle({ fillOpacity: fade, opacity: fade + 0.08 });
+
+        if (radius > baseRadius * 2) {
+          radius = baseRadius;
+          pulse.setStyle({ fillOpacity: 0.10, opacity: 0.18 });
+        }
+      }, 300);
+
+      pulseIntervals.push(intervalId);
+    }
+
     function clearLayers() {
       activeLayers.forEach(layer => map.removeLayer(layer));
       activeLayers = [];
+
+      pulseIntervals.forEach(id => clearInterval(id));
+      pulseIntervals = [];
     }
 
     function renderAreas(data) {
@@ -235,6 +267,10 @@
 
         circle.bindPopup(buildPopup(area));
         activeLayers.push(circle);
+
+        if ((area.total || 0) > 0) {
+          addPulse(area.lat, area.lng, style.radius, style.color);
+        }
 
         const label = L.marker([area.lat, area.lng], {
           icon: L.divIcon({
