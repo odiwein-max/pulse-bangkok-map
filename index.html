@@ -180,40 +180,59 @@
     }
 
     function getTopVibes(vibes) {
-      const entries = Object.entries(vibes || {});
-      if (entries.length === 0) {
-        return { text: "Quiet", emojis: "", primary: null };
-      }
+  const entries = Object.entries(vibes || {});
 
-      entries.sort((a, b) => b[1] - a[1]);
-      const topCount = entries[0][1];
+  if (entries.length === 0) {
+    return {
+      text: "quiet",
+      emojis: "",
+      primary: null
+    };
+  }
 
-      const leaders = entries
-        .filter(([_, count]) => count === topCount)
-        .slice(0, 2);
+  // מיון לפי כמות
+  entries.sort((a, b) => b[1] - a[1]);
 
-      const emojiMap = {
-        Work: "💻",
-        Social: "🧑‍🤝‍🧑",
-        Chill: "☕",
-        Explore: "🗺️",
-        Drinks: "🍻"
-      };
+  const topCount = entries[0][1];
 
-      const textMap = {
-        Work: "Work",
-        Social: "Social",
-        Chill: "Chill",
-        Explore: "Explore",
-        Drinks: "Drinks"
-      };
+  // לוקחים עד 2 vibes מובילים
+  const leaders = entries
+    .filter(([_, count]) => count === topCount)
+    .slice(0, 2);
 
-      return {
-        text: leaders.map(([v]) => textMap[v] || v).join(" / "),
-        emojis: leaders.map(([v]) => emojiMap[v] || "").join(" "),
-        primary: leaders[0]?.[0] || null
-      };
-    }
+  const emojiMap = {
+    Work: "💻",
+    Social: "🧑‍🤝‍🧑",
+    Chill: "☕",
+    Explore: "🗺️",
+    Drinks: "🍻"
+  };
+
+  const textMap = {
+    Work: "Work",
+    Social: "Social",
+    Chill: "Chill",
+    Explore: "Explore",
+    Drinks: "Drinks"
+  };
+
+  const names = leaders.map(([v]) => textMap[v] || v);
+  const emojis = leaders.map(([v]) => emojiMap[v] || "");
+
+  let text;
+
+  if (names.length === 1) {
+    text = `mostly ${names[0]}`;
+  } else {
+    text = `mixed: ${names.join(" / ")}`;
+  }
+
+  return {
+    text,
+    emojis: emojis.join(" "),
+    primary: leaders[0]?.[0] || null
+  };
+}
 
     function getVibeColor(vibe) {
       return {
@@ -271,8 +290,8 @@
 
       const intervalId = setInterval(() => {
         const minRadius = baseRadius;
-        const maxRadius = baseRadius * 1.08;
-        const step = baseRadius * 0.02;
+        const maxRadius = baseRadius * 1.06;
+        const step = baseRadius * 0.01;
 
         if (growing) {
           radius += step;
