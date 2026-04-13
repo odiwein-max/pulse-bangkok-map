@@ -1,51 +1,272 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Pulse Bangkok Map</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Pulse Bangkok Live Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <link
     rel="stylesheet"
-    href="https://unpkg.com/leaflet/dist/leaflet.css"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
   />
 
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: Arial, sans-serif;
+      background: #f7f7f7;
     }
 
     #map {
       height: 100vh;
+      width: 100%;
+    }
+
+    .map-header {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(8px);
+    }
+
+    .map-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .map-subtitle {
+      font-size: 13px;
+      color: #555;
+    }
+
+    .map-status {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #777;
+    }
+
+    .legend {
+      position: absolute;
+      bottom: 18px;
+      left: 12px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .legend-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .popup-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .popup-line {
+      margin: 3px 0;
+      font-size: 13px;
+    }
+
+    .popup-muted {
+      color: #666;
+      font-size: 12px;
+      margin-top: 6px;
     }
   </style>
 </head>
 <body>
+  <div class="map-header">
+    <div class="map-title">Pulse Bangkok Live Map</div>
+    <div class="map-subtitle">See where things are happening right now</div>
+    <div id="status" class="map-status">Loading live data…</div>
+  </div>
 
-<div id="map"></div>
+  <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <div class="legend">
+    <div class="legend-title">Activity level</div>
+    <div>Low: 1–2 people</div>
+    <div>Medium: 3–5 people</div>
+    <div>High: 6+ people</div>
+  </div>
 
-<script>
-  // Initialize map centered on Bangkok
-  var map = L.map('map').setView([13.7563, 100.5018], 12);
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
 
-  // Load OpenStreetMap tiles
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  <script>
+    const API_URL = "https://pulse-bangkok-bot-production.up.railway.app/api/heatmap";
 
-  // Test hotspot (Ari)
-  var ariHotspot = L.circle([13.7799, 100.5450], {
-    color: 'red',
-    fillColor: '#f03',
-    fillOpacity: 0.5,
-    radius: 500
-  }).addTo(map);
+    const map = L.map("map").setView([13.7563, 100.5018], 12);
 
-  ariHotspot.bindPopup("Ari — test hotspot 🔥");
-</script>
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
 
+    let activeLayers = [];
+
+    function getCircleStyle(total) {
+      if (total >= 6) {
+        return {
+          radius: 900,
+          color: "#d7263d",
+          fillColor: "#ff4d6d",
+          fillOpacity: 0.45,
+          weight: 2
+        };
+      }
+
+      if (total >= 3) {
+        return {
+          radius: 650,
+          color: "#f77f00",
+          fillColor: "#ffb703",
+          fillOpacity: 0.38,
+          weight: 2
+        };
+      }
+
+      if (total >= 1) {
+        return {
+          radius: 420,
+          color: "#2a9d8f",
+          fillColor: "#52b788",
+          fillOpacity: 0.30,
+          weight: 2
+        };
+      }
+
+      return {
+        radius: 260,
+        color: "#8d99ae",
+        fillColor: "#cfd8dc",
+        fillOpacity: 0.18,
+        weight: 1
+      };
+    }
+
+    function formatVibes(vibes) {
+      const entries = Object.entries(vibes || {});
+      if (entries.length === 0) {
+        return '<div class="popup-line">No active vibes yet</div>';
+      }
+
+      entries.sort((a, b) => b[1] - a[1]);
+
+      return entries
+        .map(([vibe, count]) => `<div class="popup-line">• ${count} ${vibe}</div>`)
+        .join("");
+    }
+
+    function buildPopup(area) {
+      return `
+        <div class="popup-title">${area.area}</div>
+        <div class="popup-line"><strong>${area.total}</strong> people active now</div>
+        ${formatVibes(area.vibes)}
+        <div class="popup-muted">Live Pulse signal</div>
+      `;
+    }
+
+    function clearLayers() {
+      activeLayers.forEach(layer => map.removeLayer(layer));
+      activeLayers = [];
+    }
+
+    function renderAreas(data) {
+      clearLayers();
+
+      const areas = data.areas || [];
+      let totalPeople = 0;
+      let activeAreas = 0;
+
+      areas.forEach(area => {
+        totalPeople += area.total || 0;
+        if ((area.total || 0) > 0) activeAreas += 1;
+
+        const style = getCircleStyle(area.total || 0);
+
+        const circle = L.circle([area.lat, area.lng], {
+          radius: style.radius,
+          color: style.color,
+          fillColor: style.fillColor,
+          fillOpacity: style.fillOpacity,
+          weight: style.weight
+        }).addTo(map);
+
+        circle.bindPopup(buildPopup(area));
+        activeLayers.push(circle);
+
+        const label = L.marker([area.lat, area.lng], {
+          icon: L.divIcon({
+            className: "",
+            html: `
+              <div style="
+                background: rgba(255,255,255,0.92);
+                border-radius: 10px;
+                padding: 4px 8px;
+                font-size: 12px;
+                font-weight: 700;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+                white-space: nowrap;
+              ">
+                ${area.area}
+              </div>
+            `,
+            iconSize: [90, 24],
+            iconAnchor: [45, 12]
+          })
+        }).addTo(map);
+
+        label.bindPopup(buildPopup(area));
+        activeLayers.push(label);
+      });
+
+      const updatedAt = data.updated_at
+        ? new Date(data.updated_at).toLocaleString()
+        : "just now";
+
+      document.getElementById("status").textContent =
+        `${totalPeople} people across ${activeAreas} active areas • updated ${updatedAt}`;
+    }
+
+    async function loadHeatmap() {
+      try {
+        const response = await fetch(API_URL, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        renderAreas(data);
+      } catch (error) {
+        document.getElementById("status").textContent =
+          "Could not load live data right now";
+        console.error("Heatmap load error:", error);
+      }
+    }
+
+    loadHeatmap();
+    setInterval(loadHeatmap, 30000);
+  </script>
 </body>
 </html>
