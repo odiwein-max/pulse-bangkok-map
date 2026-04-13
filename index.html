@@ -50,7 +50,6 @@
       color: #777;
     }
 
-    /* CTA Button */
     .cta-button {
       position: absolute;
       bottom: 20px;
@@ -66,7 +65,7 @@
       text-decoration: none;
       box-shadow: 0 8px 22px rgba(0,0,0,0.18);
     }
-    
+
     .cta-button:hover {
       opacity: 0.92;
     }
@@ -81,6 +80,11 @@
       max-width: 150px;
       white-space: normal;
       word-break: break-word;
+      cursor: pointer;
+    }
+
+    .custom-label {
+      pointer-events: auto;
     }
 
     .area-label-name {
@@ -99,11 +103,18 @@
     .popup-title {
       font-weight: 700;
       margin-bottom: 6px;
+      font-size: 14px;
     }
 
     .popup-line {
       font-size: 13px;
       margin: 3px 0;
+    }
+
+    .popup-muted {
+      color: #666;
+      font-size: 12px;
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -131,35 +142,47 @@ const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
 const map = L.map("map").setView([13.7563, 100.5018], 12);
 
 L.tileLayer(
-  `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`
+  `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+  {
+    maxZoom: 20,
+    tileSize: 256,
+    attribution: '&copy; MapTiler & OpenStreetMap contributors'
+  }
 ).addTo(map);
+
+document.querySelector(".leaflet-tile-pane").style.filter =
+  "brightness(0.95) contrast(1.02)";
 
 let layers = [];
 let intervals = [];
 
-function clearAll(){
+function clearAll() {
   layers.forEach(l => map.removeLayer(l));
   layers = [];
   intervals.forEach(i => clearInterval(i));
   intervals = [];
 }
 
-function getTopVibes(vibes){
+function getTopVibes(vibes) {
   const entries = Object.entries(vibes || {});
-  if (!entries.length) return {text:"quiet", emojis:"", primary:null};
+  if (!entries.length) return { text: "quiet", emojis: "", primary: null };
 
-  entries.sort((a,b)=>b[1]-a[1]);
+  entries.sort((a, b) => b[1] - a[1]);
   const [top, count] = entries[0];
   const second = entries[1];
 
   const emoji = {
-    Work:"💻", Social:"🧑‍🤝‍🧑", Chill:"☕", Explore:"🗺️", Drinks:"🍻"
+    Work: "💻",
+    Social: "🧑‍🤝‍🧑",
+    Chill: "☕",
+    Explore: "🗺️",
+    Drinks: "🍻"
   };
 
   let text = `mostly ${top}`;
   let emojis = emoji[top] || "";
 
-  if (second && second[1]/count >= 0.7){
+  if (second && second[1] / count >= 0.7) {
     text += ` • shifting to ${second[0]}`;
     emojis += " " + (emoji[second[0]] || "");
   }
@@ -169,10 +192,10 @@ function getTopVibes(vibes){
   if (hour >= 21 && top === "Drinks") text = `late night • ${text}`;
   if (hour >= 17 && top === "Social") text = `evening vibe • ${text}`;
 
-  return {text, emojis, primary: top};
+  return { text, emojis, primary: top };
 }
 
- function formatVibes(vibes) {
+function formatVibes(vibes) {
   const vibeMap = {
     Work: "working 💻",
     Social: "social 🧑‍🤝‍🧑",
@@ -192,45 +215,54 @@ function getTopVibes(vibes){
     .map(([vibe, count]) => `<div class="popup-line">• ${count} people ${vibeMap[vibe] || vibe}</div>`)
     .join("");
 }
-  
-function color(v){
+
+function color(v) {
   return {
-    Work:"#4361ee",
-    Social:"#f72585",
-    Chill:"#2a9d8f",
-    Explore:"#ffb703",
-    Drinks:"#e63946"
+    Work: "#4361ee",
+    Social: "#f72585",
+    Chill: "#2a9d8f",
+    Explore: "#ffb703",
+    Drinks: "#e63946"
   }[v] || "#888";
 }
 
-function pulse(circle, base){
-  let grow=true, r=base;
+function pulse(circle, base) {
+  let grow = true;
+  let r = base;
 
-  const id=setInterval(()=>{
-    const step=base*0.01;
-    const max=base*1.06;
+  const id = setInterval(() => {
+    const step = base * 0.01;
+    const max = base * 1.06;
 
     r += grow ? step : -step;
 
-    if(r>=max){r=max;grow=false;}
-    if(r<=base){r=base;grow=true;}
+    if (r >= max) {
+      r = max;
+      grow = false;
+    }
+    if (r <= base) {
+      r = base;
+      grow = true;
+    }
 
     circle.setRadius(r);
-  },180);
+  }, 180);
 
   intervals.push(id);
 }
 
-function render(data){
+function render(data) {
   clearAll();
 
-  let total = 0, active = 0;
+  let total = 0;
+  let active = 0;
 
   (data.areas || []).forEach(a => {
     total += a.total || 0;
     if (a.total > 0) active++;
 
     const size = a.total >= 6 ? 1200 : a.total >= 3 ? 800 : a.total >= 1 ? 500 : 300;
+    const opacity = a.total >= 6 ? 0.42 : a.total >= 3 ? 0.36 : a.total >= 1 ? 0.30 : 0.18;
 
     const top = getTopVibes(a.vibes);
     const c = color(top.primary);
@@ -242,16 +274,27 @@ function render(data){
       <div class="popup-muted">Live Pulse signal</div>
     `;
 
+    const openAreaPopup = (latlng) => {
+      L.popup({
+        maxWidth: 240,
+        offset: [0, -8]
+      })
+        .setLatLng(latlng)
+        .setContent(popupHtml)
+        .openOn(map);
+    };
+
     const circle = L.circle([a.lat, a.lng], {
       radius: size,
       color: c,
       fillColor: c,
-      fillOpacity: 0.35
+      fillOpacity: opacity,
+      weight: 2,
+      interactive: true
     }).addTo(map);
 
-    circle.bindPopup(popupHtml);
-    circle.on("click", function () {
-      this.openPopup();
+    circle.on("click", function(e) {
+      openAreaPopup(e.latlng);
     });
 
     layers.push(circle);
@@ -259,6 +302,7 @@ function render(data){
     if (a.total > 0) pulse(circle, size);
 
     const label = L.marker([a.lat, a.lng], {
+      interactive: true,
       icon: L.divIcon({
         className: "custom-label",
         html: `
@@ -267,14 +311,13 @@ function render(data){
             <div class="area-label-vibe">${top.emojis} ${top.text}</div>
           </div>
         `,
-        iconSize: [140, 40],
-        iconAnchor: [70, 20]
+        iconSize: [150, 42],
+        iconAnchor: [75, 21]
       })
     }).addTo(map);
 
-    label.bindPopup(popupHtml);
-    label.on("click", function () {
-      this.openPopup();
+    label.on("click", function(e) {
+      openAreaPopup(e.latlng);
     });
 
     layers.push(label);
@@ -284,18 +327,19 @@ function render(data){
     `${total} people • ${active} active areas`;
 }
 
-async function load(){
-  try{
-    const res=await fetch(API_URL);
-    const data=await res.json();
+async function load() {
+  try {
+    const res = await fetch(API_URL, { cache: "no-store" });
+    const data = await res.json();
     render(data);
-  }catch(e){
-    document.getElementById("status").textContent="Live data unavailable";
+  } catch (e) {
+    document.getElementById("status").textContent = "Live data unavailable";
+    console.error(e);
   }
 }
 
 load();
-setInterval(load,30000);
+setInterval(load, 30000);
 </script>
 
 </body>
