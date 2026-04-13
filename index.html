@@ -172,6 +172,27 @@ function getTopVibes(vibes){
   return {text, emojis, primary: top};
 }
 
+ function formatVibes(vibes) {
+  const vibeMap = {
+    Work: "working 💻",
+    Social: "social 🧑‍🤝‍🧑",
+    Chill: "chilling ☕",
+    Explore: "exploring 🗺️",
+    Drinks: "out for drinks 🍻"
+  };
+
+  const entries = Object.entries(vibes || {});
+  if (entries.length === 0) {
+    return '<div class="popup-line">No activity yet</div>';
+  }
+
+  entries.sort((a, b) => b[1] - a[1]);
+
+  return entries
+    .map(([vibe, count]) => `<div class="popup-line">• ${count} people ${vibeMap[vibe] || vibe}</div>`)
+    .join("");
+}
+  
 function color(v){
   return {
     Work:"#4361ee",
@@ -203,41 +224,58 @@ function pulse(circle, base){
 function render(data){
   clearAll();
 
-  let total=0, active=0;
+  let total = 0, active = 0;
 
-  (data.areas||[]).forEach(a=>{
+  (data.areas || []).forEach(a => {
     total += a.total || 0;
-    if(a.total>0) active++;
+    if (a.total > 0) active++;
 
-    const size = a.total>=6?1200:a.total>=3?800:a.total>=1?500:300;
+    const size = a.total >= 6 ? 1200 : a.total >= 3 ? 800 : a.total >= 1 ? 500 : 300;
 
     const top = getTopVibes(a.vibes);
     const c = color(top.primary);
 
-    const circle = L.circle([a.lat,a.lng],{
-      radius:size,
-      color:c,
-      fillColor:c,
-      fillOpacity:0.35
+    const popupHtml = `
+      <div class="popup-title">${a.area}</div>
+      <div class="popup-line"><strong>${a.total}</strong> people active now</div>
+      ${formatVibes(a.vibes)}
+      <div class="popup-muted">Live Pulse signal</div>
+    `;
+
+    const circle = L.circle([a.lat, a.lng], {
+      radius: size,
+      color: c,
+      fillColor: c,
+      fillOpacity: 0.35
     }).addTo(map);
+
+    circle.bindPopup(popupHtml);
+    circle.on("click", function () {
+      this.openPopup();
+    });
 
     layers.push(circle);
 
-    if(a.total>0) pulse(circle,size);
+    if (a.total > 0) pulse(circle, size);
 
-    const label = L.marker([a.lat,a.lng],{
+    const label = L.marker([a.lat, a.lng], {
       icon: L.divIcon({
-  className: "custom-label",
-  html: `
-    <div class="area-label" style="border-left:4px solid ${c}">
-      <div class="area-label-name">${a.area}</div>
-      <div class="area-label-vibe">${top.emojis} ${top.text}</div>
-    </div>
-  `,
-  iconSize: [140, 40],
-  iconAnchor: [70, 20]
-})
+        className: "custom-label",
+        html: `
+          <div class="area-label" style="border-left:4px solid ${c}">
+            <div class="area-label-name">${a.area}</div>
+            <div class="area-label-vibe">${top.emojis} ${top.text}</div>
+          </div>
+        `,
+        iconSize: [140, 40],
+        iconAnchor: [70, 20]
+      })
     }).addTo(map);
+
+    label.bindPopup(popupHtml);
+    label.on("click", function () {
+      this.openPopup();
+    });
 
     layers.push(label);
   });
