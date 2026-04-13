@@ -193,13 +193,6 @@
   // מיון לפי כמות
   entries.sort((a, b) => b[1] - a[1]);
 
-  const topCount = entries[0][1];
-
-  // לוקחים עד 2 vibes מובילים
-  const leaders = entries
-    .filter(([_, count]) => count === topCount)
-    .slice(0, 2);
-
   const emojiMap = {
     Work: "💻",
     Social: "🧑‍🤝‍🧑",
@@ -216,21 +209,33 @@
     Drinks: "Drinks"
   };
 
-  const names = leaders.map(([v]) => textMap[v] || v);
-  const emojis = leaders.map(([v]) => emojiMap[v] || "");
+  const [topVibe, topCount] = entries[0];
+  const second = entries[1];
 
-  let text;
+  const primaryName = textMap[topVibe] || topVibe;
+  const primaryEmoji = emojiMap[topVibe] || "";
 
-  if (names.length === 1) {
-    text = `mostly ${names[0]}`;
-  } else {
-    text = `mixed: ${names.join(" / ")}`;
+  let text = `mostly ${primaryName}`;
+  let emojis = primaryEmoji;
+
+  // בדיקה אם יש "shift"
+  if (second) {
+    const [secondVibe, secondCount] = second;
+
+    // אם השני קרוב מספיק (70% ומעלה)
+    if (secondCount / topCount >= 0.7) {
+      const secondName = textMap[secondVibe] || secondVibe;
+      const secondEmoji = emojiMap[secondVibe] || "";
+
+      text = `mostly ${primaryName} • shifting to ${secondName}`;
+      emojis = `${primaryEmoji} ${secondEmoji}`;
+    }
   }
 
   return {
     text,
-    emojis: emojis.join(" "),
-    primary: leaders[0]?.[0] || null
+    emojis,
+    primary: topVibe
   };
 }
 
