@@ -253,7 +253,15 @@
     emojis: leaders.map(([v]) => emojiMap[v]).join(" ")
   };
 }
-
+    function getVibeColor(vibe) {
+  return {
+    Work: "#4361ee",
+    Social: "#f72585",
+    Chill: "#2a9d8f",
+    Explore: "#ffb703",
+    Drinks: "#e63946"
+  }[vibe] || "#888";
+}
     function buildPopup(area) {
       return `
         <div class="popup-title">${area.area}</div>
