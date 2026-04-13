@@ -5,12 +5,7 @@
   <title>Pulse Bangkok Live Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
   <style>
     html, body {
@@ -42,7 +37,6 @@
     .map-title {
       font-size: 16px;
       font-weight: 700;
-      margin-bottom: 4px;
     }
 
     .map-subtitle {
@@ -51,26 +45,29 @@
     }
 
     .map-status {
-      margin-top: 6px;
+      margin-top: 4px;
       font-size: 12px;
       color: #777;
     }
 
-    .popup-title {
-      font-weight: 700;
-      margin-bottom: 6px;
-      font-size: 14px;
-    }
-
-    .popup-line {
-      margin: 3px 0;
+    /* CTA Button */
+    .cta-button {
+      position: absolute;
+      bottom: 20px;
+      right: 16px;
+      z-index: 1000;
+      background: #000;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 999px;
       font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
     }
 
-    .popup-muted {
-      color: #666;
-      font-size: 12px;
-      margin-top: 6px;
+    .cta-button:hover {
+      opacity: 0.9;
     }
 
     .area-label {
@@ -80,8 +77,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
       text-align: center;
       line-height: 1.2;
-    
-      max-width: 140px;
+      max-width: 150px;
       white-space: normal;
       word-break: break-word;
     }
@@ -97,300 +93,167 @@
       color: #666;
       margin-top: 2px;
       font-weight: 600;
-    
-      white-space: normal;
+    }
+
+    .popup-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .popup-line {
+      font-size: 13px;
+      margin: 3px 0;
     }
   </style>
 </head>
+
 <body>
-  <div class="map-header">
-    <div class="map-title">Pulse Bangkok Live Map</div>
-    <div class="map-subtitle">See where things are happening right now</div>
-    <div id="status" class="map-status">Loading live data…</div>
-  </div>
 
-  <div id="map"></div>
+<div class="map-header">
+  <div class="map-title">Pulse Bangkok</div>
+  <div class="map-subtitle">See where people are right now</div>
+  <div id="status" class="map-status">Loading…</div>
+</div>
 
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
+<a href="https://t.me/PulseBangkokBot" class="cta-button">
+  Open Telegram → Check in
+</a>
 
-  <script>
-    const API_URL = "https://pulse-bangkok-bot-production.up.railway.app/api/heatmap";
-    const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
+<div id="map"></div>
 
-    const map = L.map("map").setView([13.7563, 100.5018], 12);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    L.tileLayer(
-      `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
-      {
-        attribution: '&copy; MapTiler & OpenStreetMap contributors',
-        tileSize: 256,
-        maxZoom: 20,
-        opacity: 0.92
-      }
-    ).addTo(map);
+<script>
+const API_URL = "https://pulse-bangkok-bot-production.up.railway.app/api/heatmap";
+const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
 
-    document.querySelector(".leaflet-tile-pane").style.filter =
-      "brightness(0.95) contrast(1.02)";
+const map = L.map("map").setView([13.7563, 100.5018], 12);
 
-    let activeLayers = [];
-    let activeIntervals = [];
+L.tileLayer(
+  `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`
+).addTo(map);
 
-    function getCircleSize(total) {
-      if (total >= 6) return 1200;
-      if (total >= 3) return 800;
-      if (total >= 1) return 500;
-      return 300;
-    }
+let layers = [];
+let intervals = [];
 
-    function getCircleFillOpacity(total) {
-      if (total >= 6) return 0.50;
-      if (total >= 3) return 0.40;
-      if (total >= 1) return 0.32;
-      return 0.18;
-    }
-
-    function getCircleWeight(total) {
-      if (total >= 1) return 2;
-      return 1;
-    }
-
-    function getTopVibes(vibes) {
-  const entries = Object.entries(vibes || {});
-
-  if (entries.length === 0) {
-    return {
-      text: "quiet",
-      emojis: "",
-      primary: null
-    };
-  }
-
-  entries.sort((a, b) => b[1] - a[1]);
-
-  const emojiMap = {
-    Work: "💻",
-    Social: "🧑‍🤝‍🧑",
-    Chill: "☕",
-    Explore: "🗺️",
-    Drinks: "🍻"
-  };
-
-  const textMap = {
-    Work: "Work",
-    Social: "Social",
-    Chill: "Chill",
-    Explore: "Explore",
-    Drinks: "Drinks"
-  };
-
-  const [topVibe, topCount] = entries[0];
-  const second = entries[1];
-
-  const primaryName = textMap[topVibe] || topVibe;
-  const primaryEmoji = emojiMap[topVibe] || "";
-
-  let text = `mostly ${primaryName}`;
-  let emojis = primaryEmoji;
-
-  // shifting logic
-  if (second) {
-    const [secondVibe, secondCount] = second;
-
-    if (secondCount / topCount >= 0.7) {
-      const secondName = textMap[secondVibe] || secondVibe;
-      const secondEmoji = emojiMap[secondVibe] || "";
-
-      text = `mostly ${primaryName} • shifting to ${secondName}`;
-      emojis = `${primaryEmoji} ${secondEmoji}`;
-    }
-  }
-
-  // 🕒 TIME CONTEXT (חדש)
-  const hour = new Date().getHours();
-
-  if (hour >= 21 && topVibe === "Drinks") {
-    text = `late night • ${text}`;
-  }
-
-  else if (hour >= 17 && topVibe === "Social") {
-    text = `evening vibe • ${text}`;
-  }
-
-  else if (hour >= 9 && hour <= 14 && topVibe === "Work") {
-    text = `daytime • ${text}`;
-  }
-
-  else if (hour >= 10 && hour <= 16 && topVibe === "Chill") {
-    text = `slow day • ${text}`;
-  }
-
-  return {
-    text,
-    emojis,
-    primary: topVibe
-  };
+function clearAll(){
+  layers.forEach(l => map.removeLayer(l));
+  layers = [];
+  intervals.forEach(i => clearInterval(i));
+  intervals = [];
 }
 
-    function getVibeColor(vibe) {
-      return {
-        Work: "#4361ee",
-        Social: "#f72585",
-        Chill: "#2a9d8f",
-        Explore: "#ffb703",
-        Drinks: "#e63946"
-      }[vibe] || "#8d99ae";
-    }
+function getTopVibes(vibes){
+  const entries = Object.entries(vibes || {});
+  if (!entries.length) return {text:"quiet", emojis:"", primary:null};
 
-    function formatVibes(vibes) {
-      const vibeMap = {
-        Work: "working 💻",
-        Social: "social 🧑‍🤝‍🧑",
-        Chill: "chilling ☕",
-        Explore: "exploring 🗺️",
-        Drinks: "out for drinks 🍻"
-      };
+  entries.sort((a,b)=>b[1]-a[1]);
+  const [top, count] = entries[0];
+  const second = entries[1];
 
-      const entries = Object.entries(vibes || {});
-      if (entries.length === 0) {
-        return '<div class="popup-line">No activity yet</div>';
-      }
+  const emoji = {
+    Work:"💻", Social:"🧑‍🤝‍🧑", Chill:"☕", Explore:"🗺️", Drinks:"🍻"
+  };
 
-      entries.sort((a, b) => b[1] - a[1]);
+  let text = `mostly ${top}`;
+  let emojis = emoji[top] || "";
 
-      return entries
-        .map(([vibe, count]) => `<div class="popup-line">• ${count} people ${vibeMap[vibe] || vibe}</div>`)
-        .join("");
-    }
+  if (second && second[1]/count >= 0.7){
+    text += ` • shifting to ${second[0]}`;
+    emojis += " " + (emoji[second[0]] || "");
+  }
 
-    function buildPopup(area) {
-      return `
-        <div class="popup-title">${area.area}</div>
-        <div class="popup-line"><strong>${area.total}</strong> people active now</div>
-        ${formatVibes(area.vibes)}
-        <div class="popup-muted">Live Pulse signal</div>
-      `;
-    }
+  const hour = new Date().getHours();
 
-    function clearLayers() {
-      activeLayers.forEach(layer => {
-        map.removeLayer(layer);
-      });
-      activeLayers = [];
+  if (hour >= 21 && top === "Drinks") text = `late night • ${text}`;
+  if (hour >= 17 && top === "Social") text = `evening vibe • ${text}`;
 
-      activeIntervals.forEach(id => clearInterval(id));
-      activeIntervals = [];
-    }
+  return {text, emojis, primary: top};
+}
 
-    function startCircleHeartbeat(circle, baseRadius) {
-      let growing = true;
-      let radius = baseRadius;
+function color(v){
+  return {
+    Work:"#4361ee",
+    Social:"#f72585",
+    Chill:"#2a9d8f",
+    Explore:"#ffb703",
+    Drinks:"#e63946"
+  }[v] || "#888";
+}
 
-      const intervalId = setInterval(() => {
-        const minRadius = baseRadius;
-        const maxRadius = baseRadius * 1.06;
-        const step = baseRadius * 0.01;
+function pulse(circle, base){
+  let grow=true, r=base;
 
-        if (growing) {
-          radius += step;
-          if (radius >= maxRadius) {
-            radius = maxRadius;
-            growing = false;
-          }
-        } else {
-          radius -= step;
-          if (radius <= minRadius) {
-            radius = minRadius;
-            growing = true;
-          }
-        }
+  const id=setInterval(()=>{
+    const step=base*0.01;
+    const max=base*1.06;
 
-        circle.setRadius(radius);
-      }, 120);
+    r += grow ? step : -step;
 
-      activeIntervals.push(intervalId);
-    }
+    if(r>=max){r=max;grow=false;}
+    if(r<=base){r=base;grow=true;}
 
-    function renderAreas(data) {
-      clearLayers();
+    circle.setRadius(r);
+  },180);
 
-      const areas = data.areas || [];
-      let totalPeople = 0;
-      let activeAreas = 0;
+  intervals.push(id);
+}
 
-      areas.forEach(area => {
-        totalPeople += area.total || 0;
-        if ((area.total || 0) > 0) activeAreas += 1;
+function render(data){
+  clearAll();
 
-        const size = getCircleSize(area.total || 0);
-        const opacity = getCircleFillOpacity(area.total || 0);
-        const weight = getCircleWeight(area.total || 0);
+  let total=0, active=0;
 
-        const top = getTopVibes(area.vibes);
-        const vibeColor = getVibeColor(top.primary);
+  (data.areas||[]).forEach(a=>{
+    total += a.total || 0;
+    if(a.total>0) active++;
 
-        const circle = L.circle([area.lat, area.lng], {
-          radius: size,
-          color: vibeColor,
-          fillColor: vibeColor,
-          fillOpacity: opacity,
-          weight: weight
-        }).addTo(map);
+    const size = a.total>=6?1200:a.total>=3?800:a.total>=1?500:300;
 
-        circle.bindPopup(buildPopup(area));
-        activeLayers.push(circle);
+    const top = getTopVibes(a.vibes);
+    const c = color(top.primary);
 
-        if ((area.total || 0) > 0) {
-          startCircleHeartbeat(circle, size);
-        }
+    const circle = L.circle([a.lat,a.lng],{
+      radius:size,
+      color:c,
+      fillColor:c,
+      fillOpacity:0.35
+    }).addTo(map);
 
-        const label = L.marker([area.lat, area.lng], {
-          icon: L.divIcon({
-            className: "",
-            html: `
-              <div class="area-label" style="border-left: 4px solid ${vibeColor}">
-                <div class="area-label-name">${area.area}</div>
-                <div class="area-label-vibe">${top.emojis} ${top.text}</div>
-              </div>
-            `,
-            iconSize: [130, 38],
-            iconAnchor: [65, 19]
-          })
-        }).addTo(map);
+    layers.push(circle);
 
-        label.bindPopup(buildPopup(area));
-        activeLayers.push(label);
-      });
+    if(a.total>0) pulse(circle,size);
 
-      const updatedAt = data.updated_at
-        ? new Date(data.updated_at).toLocaleString()
-        : "just now";
+    const label = L.marker([a.lat,a.lng],{
+      icon:L.divIcon({
+        html:`
+        <div class="area-label" style="border-left:4px solid ${c}">
+          <div class="area-label-name">${a.area}</div>
+          <div class="area-label-vibe">${top.emojis} ${top.text}</div>
+        </div>`
+      })
+    }).addTo(map);
 
-      document.getElementById("status").textContent =
-        `${totalPeople} people across ${activeAreas} active areas • updated ${updatedAt}`;
-    }
+    layers.push(label);
+  });
 
-    async function loadHeatmap() {
-      try {
-        const response = await fetch(API_URL, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+  document.getElementById("status").textContent =
+    `${total} people • ${active} active areas`;
+}
 
-        const data = await response.json();
-        renderAreas(data);
-      } catch (error) {
-        document.getElementById("status").textContent =
-          "Could not load live data right now";
-        console.error("Heatmap load error:", error);
-      }
-    }
+async function load(){
+  try{
+    const res=await fetch(API_URL);
+    const data=await res.json();
+    render(data);
+  }catch(e){
+    document.getElementById("status").textContent="Live data unavailable";
+  }
+}
 
-    loadHeatmap();
-    setInterval(loadHeatmap, 30000);
-  </script>
+load();
+setInterval(load,30000);
+</script>
+
 </body>
 </html>
