@@ -119,14 +119,21 @@
 
     const map = L.map("map").setView([13.7563, 100.5018], 12);
 
-    L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; Stadia Maps & OpenMapTiles & OpenStreetMap",
-    maxZoom: 20,
-    opacity: 0.9
-    }).addTo(map);
+   const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
 
-    // עדינות בעין - קצת ריכוך ובהירות
-    document.querySelector(".leaflet-tile-pane").style.filter = "brightness(0.95) contrast(1.02)";
+  L.tileLayer(
+  `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+  {
+    attribution: '&copy; MapTiler & OpenStreetMap contributors',
+    tileSize: 256,
+    maxZoom: 20,
+    opacity: 0.92
+  }
+  ).addTo(map);
+
+  // שיפור בהירות עדין
+  document.querySelector(".leaflet-tile-pane").style.filter =
+  "brightness(0.95) contrast(1.02)";
 
     let activeLayers = [];
 
