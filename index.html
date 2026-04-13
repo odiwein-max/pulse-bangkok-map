@@ -225,13 +225,17 @@ function render(data){
     if(a.total>0) pulse(circle,size);
 
     const label = L.marker([a.lat,a.lng],{
-      icon:L.divIcon({
-        html:`
-        <div class="area-label" style="border-left:4px solid ${c}">
-          <div class="area-label-name">${a.area}</div>
-          <div class="area-label-vibe">${top.emojis} ${top.text}</div>
-        </div>`
-      })
+      icon: L.divIcon({
+  className: "custom-label",
+  html: `
+    <div class="area-label" style="border-left:4px solid ${c}">
+      <div class="area-label-name">${a.area}</div>
+      <div class="area-label-vibe">${top.emojis} ${top.text}</div>
+    </div>
+  `,
+  iconSize: [140, 40],
+  iconAnchor: [70, 20]
+})
     }).addTo(map);
 
     layers.push(label);
