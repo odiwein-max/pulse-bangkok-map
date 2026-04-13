@@ -221,27 +221,38 @@
     }
 
     function getTopVibes(vibes) {
-      const shortMap = {
-        Work: "Work 💻",
-        Social: "Social 🧑‍🤝‍🧑",
-        Chill: "Chill ☕",
-        Explore: "Explore 🗺️",
-        Drinks: "Drinks 🍻"
-      };
+  const entries = Object.entries(vibes || {});
+  if (entries.length === 0) return { text: "Quiet", emojis: "" };
 
-      const entries = Object.entries(vibes || {});
-      if (entries.length === 0) return "Quiet";
+  entries.sort((a, b) => b[1] - a[1]);
 
-      entries.sort((a, b) => b[1] - a[1]);
+  const topCount = entries[0][1];
 
-      const topCount = entries[0][1];
-      const leaders = entries
-        .filter(([_, count]) => count === topCount)
-        .slice(0, 2)
-        .map(([vibe]) => shortMap[vibe] || vibe);
+  const leaders = entries
+    .filter(([_, count]) => count === topCount)
+    .slice(0, 2);
 
-      return leaders.join(" / ");
-    }
+  const emojiMap = {
+    Work: "💻",
+    Social: "🧑‍🤝‍🧑",
+    Chill: "☕",
+    Explore: "🗺️",
+    Drinks: "🍻"
+  };
+
+  const textMap = {
+    Work: "Work",
+    Social: "Social",
+    Chill: "Chill",
+    Explore: "Explore",
+    Drinks: "Drinks"
+  };
+
+  return {
+    text: leaders.map(([v]) => textMap[v]).join(" / "),
+    emojis: leaders.map(([v]) => emojiMap[v]).join(" ")
+  };
+}
 
     function buildPopup(area) {
       return `
