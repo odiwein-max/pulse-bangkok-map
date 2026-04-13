@@ -90,6 +90,29 @@
       font-size: 12px;
       margin-top: 6px;
     }
+
+    .area-label {
+      background: rgba(255,255,255,0.92);
+      border-radius: 12px;
+      padding: 6px 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      white-space: nowrap;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .area-label-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #222;
+    }
+
+    .area-label-vibe {
+      margin-top: 2px;
+      font-size: 11px;
+      color: #666;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -116,10 +139,9 @@
 
   <script>
     const API_URL = "https://pulse-bangkok-bot-production.up.railway.app/api/heatmap";
+    const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
 
     const map = L.map("map").setView([13.7563, 100.5018], 12);
-
-    const MAPTILER_KEY = "4cnGgtT3i26LYrwP5feB";
 
     L.tileLayer(
       `https://api.maptiler.com/maps/openstreetmap/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
@@ -135,7 +157,7 @@
       "brightness(0.95) contrast(1.02)";
 
     let activeLayers = [];
-    let pulseIntervals = [];
+    let activeIntervals = [];
 
     function getCircleStyle(total) {
       if (total >= 6) {
@@ -143,7 +165,7 @@
           radius: 1200,
           color: "#d7263d",
           fillColor: "#ff4d6d",
-          fillOpacity: 0.5,
+          fillOpacity: 0.50,
           weight: 2
         };
       }
@@ -153,7 +175,7 @@
           radius: 800,
           color: "#f77f00",
           fillColor: "#ffb703",
-          fillOpacity: 0.4,
+          fillOpacity: 0.40,
           weight: 2
         };
       }
@@ -163,7 +185,7 @@
           radius: 500,
           color: "#2a9d8f",
           fillColor: "#52b788",
-          fillOpacity: 0.3,
+          fillOpacity: 0.32,
           weight: 2
         };
       }
@@ -172,7 +194,7 @@
         radius: 300,
         color: "#8d99ae",
         fillColor: "#cfd8dc",
-        fillOpacity: 0.2,
+        fillOpacity: 0.18,
         weight: 1
       };
     }
@@ -198,6 +220,29 @@
         .join("");
     }
 
+    function getTopVibes(vibes) {
+      const shortMap = {
+        Work: "Work 💻",
+        Social: "Social 🧑‍🤝‍🧑",
+        Chill: "Chill ☕",
+        Explore: "Explore 🗺️",
+        Drinks: "Drinks 🍻"
+      };
+
+      const entries = Object.entries(vibes || {});
+      if (entries.length === 0) return "Quiet";
+
+      entries.sort((a, b) => b[1] - a[1]);
+
+      const topCount = entries[0][1];
+      const leaders = entries
+        .filter(([_, count]) => count === topCount)
+        .slice(0, 2)
+        .map(([vibe]) => shortMap[vibe] || vibe);
+
+      return leaders.join(" / ");
+    }
+
     function buildPopup(area) {
       return `
         <div class="popup-title">${area.area}</div>
@@ -207,41 +252,43 @@
       `;
     }
 
-    function addPulse(lat, lng, baseRadius, color) {
-      let radius = baseRadius;
-
-      const pulse = L.circle([lat, lng], {
-        radius: radius,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.10,
-        weight: 1
-      }).addTo(map);
-
-      activeLayers.push(pulse);
-
-      const intervalId = setInterval(() => {
-        radius += 120;
-        pulse.setRadius(radius);
-
-        const fade = Math.max(0.02, 0.12 - ((radius - baseRadius) / (baseRadius * 2)) * 0.12);
-        pulse.setStyle({ fillOpacity: fade, opacity: fade + 0.08 });
-
-        if (radius > baseRadius * 2) {
-          radius = baseRadius;
-          pulse.setStyle({ fillOpacity: 0.10, opacity: 0.18 });
-        }
-      }, 300);
-
-      pulseIntervals.push(intervalId);
-    }
-
     function clearLayers() {
-      activeLayers.forEach(layer => map.removeLayer(layer));
+      activeLayers.forEach(layer => {
+        map.removeLayer(layer);
+      });
       activeLayers = [];
 
-      pulseIntervals.forEach(id => clearInterval(id));
-      pulseIntervals = [];
+      activeIntervals.forEach(intervalId => clearInterval(intervalId));
+      activeIntervals = [];
+    }
+
+    function startCircleHeartbeat(circle, baseRadius) {
+      let growing = true;
+      let radius = baseRadius;
+
+      const intervalId = setInterval(() => {
+        const minRadius = baseRadius;
+        const maxRadius = baseRadius * 1.10;
+        const step = baseRadius * 0.015;
+
+        if (growing) {
+          radius += step;
+          if (radius >= maxRadius) {
+            radius = maxRadius;
+            growing = false;
+          }
+        } else {
+          radius -= step;
+          if (radius <= minRadius) {
+            radius = minRadius;
+            growing = true;
+          }
+        }
+
+        circle.setRadius(radius);
+      }, 110);
+
+      activeIntervals.push(intervalId);
     }
 
     function renderAreas(data) {
@@ -269,27 +316,22 @@
         activeLayers.push(circle);
 
         if ((area.total || 0) > 0) {
-          addPulse(area.lat, area.lng, style.radius, style.color);
+          startCircleHeartbeat(circle, style.radius);
         }
+
+        const topVibes = getTopVibes(area.vibes);
 
         const label = L.marker([area.lat, area.lng], {
           icon: L.divIcon({
             className: "",
             html: `
-              <div style="
-                background: rgba(255,255,255,0.92);
-                border-radius: 10px;
-                padding: 4px 8px;
-                font-size: 12px;
-                font-weight: 700;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-                white-space: nowrap;
-              ">
-                ${area.area}
+              <div class="area-label">
+                <div class="area-label-name">${area.area}</div>
+                <div class="area-label-vibe">${topVibes}</div>
               </div>
             `,
-            iconSize: [90, 24],
-            iconAnchor: [45, 12]
+            iconSize: [120, 34],
+            iconAnchor: [60, 17]
           })
         }).addTo(map);
 
